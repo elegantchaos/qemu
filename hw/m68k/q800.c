@@ -106,6 +106,23 @@ static void main_cpu_reset(void *opaque)
    }
 }
 
+static uint64_t machine_id_read(void *opaque, hwaddr addr, unsigned size)
+{
+    return 0xa55a2bad; /* Quadra 800 ID */
+}
+
+static void machine_id_write(void *opaque, hwaddr addr, uint64_t val,
+                             unsigned size)
+{
+}
+
+static const MemoryRegionOps machine_id_ops = {
+    .read = machine_id_read,
+    .write = machine_id_write,
+    .valid.min_access_size = 4,
+    .valid.max_access_size = 4,
+};
+
 static void q800_init(MachineState *machine)
 {
     M68kCPU *cpu = NULL;
@@ -119,6 +136,7 @@ static void q800_init(MachineState *machine)
     MemoryRegion *rom = NULL;
     MemoryRegion *ram;
     MemoryRegion *io;
+    MemoryRegion *machine_id;
     const int io_slice_nb = (IO_SIZE / IO_SLICE) - 1;
     int i;
     ram_addr_t ram_size = machine->ram_size;
@@ -195,6 +213,10 @@ static void q800_init(MachineState *machine)
                                     IO_BASE + (i + 1) * IO_SLICE, &io[i]);
         g_free(name);
     }
+
+    machine_id = g_malloc(sizeof(*machine_id));
+    memory_region_init_io(machine_id, NULL, &machine_id_ops, NULL, "Machine ID", 4);
+    memory_region_add_subregion(get_system_memory(), 0x5ffffffc, machine_id);
 
     /* djMEMC memory and interrupt controller */
 
