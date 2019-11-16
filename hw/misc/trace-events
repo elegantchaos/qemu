@@ -153,3 +153,7 @@ bcm2835_mbox_property(uint32_t tag, uint32_t bufsize, size_t resplen) "mbox prop
 # djmemc.c
 djMEMC_read(int reg, unsigned size, uint64_t value) "reg=%d size=%u value=0x%"PRIx64
 djMEMC_write(int reg, unsigned size, uint64_t value) "reg=%d size=%u value=0x%"PRIx64
+
+# iosb.c
+IOSB_read(int reg, unsigned size, uint64_t value) "reg=%d size=%u value=0x%"PRIx64
+IOSB_write(int reg, unsigned size, uint64_t value) "reg=%d size=%u value=0x%"PRIx64
