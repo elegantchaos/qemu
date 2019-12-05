@@ -162,10 +162,10 @@ static void generate_fifo(ASCState *s, int free_b)
                     qemu_irq_raise(s->irq);
                 }
                 if (s->b_cnt == 0x1ff) {
-                    s->regs[ASC_FIFOIRQ] |= 4; /* FIFO A half empty */
+                    s->regs[ASC_FIFOIRQ] |= 4; /* FIFO B half empty */
                     qemu_irq_raise(s->irq);
                 } else if (s->b_cnt == 0x001) {
-                    s->regs[ASC_FIFOIRQ] |= 8; /* FIFO A half empty */
+                    s->regs[ASC_FIFOIRQ] |= 8; /* FIFO B half empty */
                     qemu_irq_raise(s->irq);
                 }
             }
