@@ -431,10 +431,10 @@ static void asc_reset(DeviceState *d)
     s->b_cnt = 0;
 }
 
-static void asc_init(Object *obj)
+static void asc_realize(DeviceState *dev, Error **errp)
 {
-    ASCState *s = ASC(obj);
-    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
+    ASCState *s = ASC(dev);
+    SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
     struct audsettings as;
 
     AUD_register_card("Apple Sound Chip", &s->card);
@@ -457,6 +457,7 @@ static void asc_init(Object *obj)
 }
 
 static Property asc_properties[] = {
+    DEFINE_AUDIO_PROPERTIES(ASCState, card),
     DEFINE_PROP_UINT8("asctype", ASCState, type, ASC_TYPE_ASC),
     DEFINE_PROP_END_OF_LIST(),
 };
@@ -465,6 +466,8 @@ static void asc_class_init(ObjectClass *oc, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(oc);
 
+    dc->realize = asc_realize;
+    set_bit(DEVICE_CATEGORY_SOUND, dc->categories);
     dc->reset = asc_reset;
     dc->vmsd = &vmstate_asc;
     dc->props = asc_properties;
@@ -474,7 +477,6 @@ static TypeInfo asc_info = {
     .name = TYPE_ASC,
     .parent = TYPE_SYS_BUS_DEVICE,
     .instance_size = sizeof(ASCState),
-    .instance_init = asc_init,
     .class_init = asc_class_init,
 };
 
