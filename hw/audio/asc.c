@@ -237,7 +237,7 @@ static void asc_out_cb(void *opaque, int free_b)
 }
 
 static uint64_t asc_read(void *opaque, hwaddr addr,
-                              unsigned size)
+                         unsigned size)
 {
     ASCState *s = opaque;
     uint64_t prev, value;
@@ -321,7 +321,7 @@ static uint64_t asc_read(void *opaque, hwaddr addr,
 }
 
 static void asc_write(void *opaque, hwaddr addr, uint64_t value,
-                           unsigned size)
+                      unsigned size)
 {
     ASCState *s = opaque;
 
