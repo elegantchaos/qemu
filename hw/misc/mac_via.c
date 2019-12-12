@@ -29,6 +29,7 @@
 #include "qemu/cutils.h"
 #include "exec/address-spaces.h"
 #include "hw/qdev-properties.h"
+#include "trace.h"
 
 /*
  * VIAs: There are two in every machine,
@@ -395,6 +396,8 @@ static void via1_rtc_update(MacVIAState *m)
     if (m->data_out_cnt == 8) {
         m->data_out_cnt = 0;
 
+        trace_via1_rtc_data_out(m->data_out);
+
         if (m->cmd == 0) {
             if (m->data_out & 0x80) {
                 /* this is a read command */
@@ -404,32 +407,42 @@ static void via1_rtc_update(MacVIAState *m)
                 if (m->data_out == 0x81) {        /* seconds register 0 */
                     m->data_in = time & 0xff;
                     m->data_in_cnt = 8;
+                    trace_via1_rtc_data_in(m->data_in);
                 } else if (m->data_out == 0x85) { /* seconds register 1 */
                     m->data_in = (time >> 8) & 0xff;
                     m->data_in_cnt = 8;
+                    trace_via1_rtc_data_in(m->data_in);
                 } else if (m->data_out == 0x89) { /* seconds register 2 */
                     m->data_in = (time >> 16) & 0xff;
                     m->data_in_cnt = 8;
+                    trace_via1_rtc_data_in(m->data_in);
                 } else if (m->data_out == 0x8d) { /* seconds register 3 */
                     m->data_in = (time >> 24) & 0xff;
                     m->data_in_cnt = 8;
+                    trace_via1_rtc_data_in(m->data_in);
                 } else if ((m->data_out & 0xf3) == 0xa1) {
                     /* PRAM address 0x10 -> 0x13 */
                     int addr = (m->data_out >> 2) & 0x03;
                     m->data_in = v1s->PRAM[addr];
                     m->data_in_cnt = 8;
+                    trace_via1_rtc_data_in(m->data_in);
+                    trace_via1_rtc_pram_read(addr, m->data_in);
                 } else if ((m->data_out & 0xf3) == 0xa1) {
                     /* PRAM address 0x00 -> 0x0f */
                     int addr = (m->data_out >> 2) & 0x0f;
                     m->data_in = v1s->PRAM[addr];
                     m->data_in_cnt = 8;
+                    trace_via1_rtc_data_in(m->data_in);
+                    trace_via1_rtc_pram_read(addr, m->data_in);
                 } else if ((m->data_out & 0xf8) == 0xb8) {
                     /* extended memory designator and sector number */
                     m->cmd = m->data_out;
+                    trace_via1_rtc_data_out_cmd(m->cmd);
                 }
             } else {
                 /* this is a write command */
                 m->cmd = m->data_out;
+                trace_via1_rtc_data_out_cmd(m->cmd);
             }
         } else {
             if (m->cmd & 0x80) {
@@ -440,6 +453,8 @@ static void via1_rtc_update(MacVIAState *m)
 
                     m->data_in = v1s->PRAM[sector * 8 + addr];
                     m->data_in_cnt = 8;
+                    trace_via1_rtc_data_in(m->data_in);
+                    trace_via1_rtc_pram_read(sector * 8 + addr, m->data_in);
                 }
             } else if (!m->wprotect) {
                 /* this is a write command */
@@ -451,6 +466,7 @@ static void via1_rtc_update(MacVIAState *m)
                     v1s->PRAM[sector * 8 + addr] = m->data_out;
 
                     m->alt = 0;
+                    trace_via1_rtc_pram_write(sector * 8 + addr, m->data_out);
                 } else if (m->cmd == 0x01) { /* seconds register 0 */
                     /* FIXME */
                 } else if (m->cmd == 0x05) { /* seconds register 1 */
@@ -468,10 +484,12 @@ static void via1_rtc_update(MacVIAState *m)
                     /* PRAM address 0x10 -> 0x13 */
                     int addr = (m->cmd >> 2) & 0x03;
                     v1s->PRAM[addr] = m->data_out;
+                    trace_via1_rtc_pram_write(addr, m->data_out);
                 } else if ((m->cmd & 0xf3) == 0xa1) {
                     /* PRAM address 0x00 -> 0x0f */
                     int addr = (m->cmd >> 2) & 0x0f;
                     v1s->PRAM[addr] = m->data_out;
+                    trace_via1_rtc_pram_write(addr, m->data_out);
                 } else if ((m->cmd & 0xf8) == 0xb8) {
                     /* extended memory designator and sector number */
                     m->alt = m->cmd;

@@ -157,3 +157,10 @@ djMEMC_write(int reg, unsigned size, uint64_t value) "reg=%d size=%u value=0x%"P
 # iosb.c
 IOSB_read(int reg, unsigned size, uint64_t value) "reg=%d size=%u value=0x%"PRIx64
 IOSB_write(int reg, unsigned size, uint64_t value) "reg=%d size=%u value=0x%"PRIx64
+
+# mac_via.c
+via1_rtc_data_out(uint8_t data) "value 0x%x"
+via1_rtc_data_out_cmd(uint8_t data) "0x%x"
+via1_rtc_data_in(uint8_t data) "value 0x%x"
+via1_rtc_pram_read(uint8_t addr, uint8_t data) "addr 0x%x value 0x%x"
+via1_rtc_pram_write(uint8_t addr, uint8_t data) "addr 0x%x value 0x%x"
