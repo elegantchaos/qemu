@@ -449,11 +449,13 @@ static void asc_realize(DeviceState *dev, Error **errp)
 
     s->fifo = g_malloc0(ASC_BUF_SIZE);
 
-    memory_region_init_io(&s->mem_regs, NULL, &asc_mmio_ops, s, "asc",
+    memory_region_init(&s->asc, OBJECT(dev), "asc", ASC_LENGTH);
+    memory_region_init_io(&s->mem_regs, OBJECT(dev), &asc_mmio_ops, s, "asc.regs",
                           ASC_LENGTH);
+    memory_region_add_subregion(&s->asc, 0x0, &s->mem_regs);
 
     sysbus_init_irq(sbd, &s->irq);
-    sysbus_init_mmio(sbd, &s->mem_regs);
+    sysbus_init_mmio(sbd, &s->asc);
 }
 
 static Property asc_properties[] = {

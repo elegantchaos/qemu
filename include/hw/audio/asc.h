@@ -27,6 +27,7 @@ enum {
 typedef struct ASCState {
     SysBusDevice parent_obj;
 
+    MemoryRegion asc;
     MemoryRegion mem_regs;
     QEMUSoundCard card;
     SWVoiceOut *channel;
