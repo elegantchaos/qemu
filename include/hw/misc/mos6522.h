@@ -104,6 +104,7 @@ typedef struct MOS6522State {
     SysBusDevice parent_obj;
     /*< public >*/
 
+    char *id;
     MemoryRegion mem;
     /* VIA registers */
     uint8_t b;

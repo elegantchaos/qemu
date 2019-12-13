@@ -81,8 +81,8 @@ imx7_gpr_write(uint64_t offset, uint64_t value) "addr 0x%08" PRIx64 "value 0x%08
 mos6522_set_counter(int index, unsigned int val) "T%d.counter=%d"
 mos6522_get_next_irq_time(uint16_t latch, int64_t d, int64_t delta) "latch=%d counter=0x%"PRId64 " delta_next=0x%"PRId64
 mos6522_set_sr_int(void) "set sr_int"
-mos6522_write(uint64_t addr, const char *reg_name, uint64_t val) "reg=0x%"PRIx64 " [%s] val=0x%"PRIx64
-mos6522_read(uint64_t addr, const char *reg_name, unsigned val) "reg=0x%"PRIx64 " [%s] val=0x%x"
+mos6522_write(const char *name, uint64_t addr, const char *reg_name, uint64_t val) "%s reg=0x%"PRIx64 " [%s] val=0x%"PRIx64
+mos6522_read(const char *name, uint64_t addr, const char *reg_name, unsigned val) "%s reg=0x%"PRIx64 " [%s] val=0x%x"
 
 # tz-mpc.c
 tz_mpc_reg_read(uint32_t offset, uint64_t data, unsigned size) "TZ MPC regs read: offset 0x%x data 0x%" PRIx64 " size %u"
@@ -164,3 +164,4 @@ via1_rtc_data_out_cmd(uint8_t data) "0x%x"
 via1_rtc_data_in(uint8_t data) "value 0x%x"
 via1_rtc_pram_read(uint8_t addr, uint8_t data) "addr 0x%x value 0x%x"
 via1_rtc_pram_write(uint8_t addr, uint8_t data) "addr 0x%x value 0x%x"
+via1_read_machine_id(uint8_t id) "value 0x%x"

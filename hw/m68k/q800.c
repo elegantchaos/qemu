@@ -116,6 +116,7 @@ static uint64_t machine_id_read(void *opaque, hwaddr addr, unsigned size)
 static void machine_id_write(void *opaque, hwaddr addr, uint64_t val,
                              unsigned size)
 {
+    fprintf(stderr, "#### Someone tried to write me?!\n");
 }
 
 static const MemoryRegionOps machine_id_ops = {

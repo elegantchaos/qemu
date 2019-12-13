@@ -300,15 +300,15 @@ uint64_t mos6522_read(void *opaque, hwaddr addr, unsigned size)
         }
         break;
     case VIA_REG_IER:
-        val = s->ier | 0x80;
+        val = s->ier; // | 0x80;
         break;
     default:
         g_assert_not_reached();
     }
 
-    if (addr != VIA_REG_IFR || val != 0) {
-        trace_mos6522_read(addr, reg_names[addr], val);
-    }
+    //if (addr != VIA_REG_IFR || val != 0) {
+        trace_mos6522_read(s->id ? s->id : "", addr, reg_names[addr], val);
+    //}
 
     return val;
 }
@@ -318,7 +318,7 @@ void mos6522_write(void *opaque, hwaddr addr, uint64_t val, unsigned size)
     MOS6522State *s = opaque;
     MOS6522DeviceClass *mdc = MOS6522_DEVICE_GET_CLASS(s);
 
-    trace_mos6522_write(addr, reg_names[addr], val);
+    trace_mos6522_write(s->id ? s->id : "", addr, reg_names[addr], val);
 
     switch (addr) {
     case VIA_REG_B:
@@ -492,6 +492,7 @@ static void mos6522_init(Object *obj)
 }
 
 static Property mos6522_properties[] = {
+    DEFINE_PROP_STRING("id", MOS6522State, id),
     DEFINE_PROP_UINT64("frequency", MOS6522State, frequency, 0),
     DEFINE_PROP_END_OF_LIST()
 };
