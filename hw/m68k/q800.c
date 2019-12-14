@@ -71,7 +71,7 @@
 #define VIA_BASE              (IO_BASE + 0x00000)
 #define SONIC_PROM_BASE       (IO_BASE + 0x08000)
 #define SONIC_BASE            (IO_BASE + 0x0a000)
-#define SCC_BASE              (IO_BASE + 0x0c000)
+#define SCC_BASE              (IO_BASE + 0x0c020)
 #define DJMEMC_BASE           (IO_BASE + 0x0e000)
 #define ESP_BASE              (IO_BASE + 0x10000)
 #define ESP_PDMA              (IO_BASE + 0x10100)
@@ -146,8 +146,13 @@ static MemTxResult macio_alias_read(void *opaque, hwaddr addr, uint64_t *data,
     addr &= IO_SLICE_MASK;
     mrs = memory_region_find(&m->mac_io, addr, size);
 
-    return memory_region_dispatch_read(mrs.mr, mrs.offset_within_region,
-                                       data, size_memop(size) | MO_BE, attrs);
+    if (mrs.mr) { 
+        return memory_region_dispatch_read(mrs.mr, mrs.offset_within_region,
+                                           data, size_memop(size) | MO_BE, attrs);
+    } else {
+        fprintf(stderr, "??? Unknown macio read from addr 0x%"PRIx64"\n", addr);
+        return MEMTX_ERROR;
+    }
 }
 
 static MemTxResult macio_alias_write(void *opaque, hwaddr addr, uint64_t value,
@@ -159,9 +164,14 @@ static MemTxResult macio_alias_write(void *opaque, hwaddr addr, uint64_t value,
     addr &= IO_SLICE_MASK;
     mrs = memory_region_find(&m->mac_io, addr, size);
 
-    memory_region_dispatch_write(mrs.mr, mrs.offset_within_region,
-                                 value, size_memop(size) | MO_BE, attrs);
-    return MEMTX_OK;
+    if (mrs.mr) {
+        memory_region_dispatch_write(mrs.mr, mrs.offset_within_region,
+                                     value, size_memop(size) | MO_BE, attrs);
+        return MEMTX_OK;
+    } else {
+        fprintf(stderr, "??? Unknown macio write to addr 0x%"PRIx64"\n", addr);
+        return MEMTX_ERROR;
+    }
 }
 
 static const MemoryRegionOps macio_alias_ops = {
