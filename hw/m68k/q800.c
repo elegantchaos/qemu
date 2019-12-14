@@ -65,6 +65,7 @@
 
 #define IO_BASE               0x50000000
 #define IO_SLICE              0x00040000
+#define IO_SLICE_MASK         (IO_SLICE - 1)
 #define IO_SIZE               0x04000000
 
 #define VIA_BASE              (IO_BASE + 0x00000)
@@ -89,6 +90,16 @@
 #define VIDEO_BASE            0xf9001000
 
 #define MAC_CLOCK  3686418
+
+typedef struct Q800MachineState {
+    MachineState parent_obj;
+
+    MemoryRegion mac_io;
+} Q800MachineState;
+
+#define TYPE_Q800_MACHINE MACHINE_TYPE_NAME("q800")
+#define Q800_MACHINE(obj) OBJECT_CHECK(Q800MachineState, (obj), TYPE_Q800_MACHINE)
+
 
 static void main_cpu_reset(void *opaque)
 {
@@ -126,8 +137,43 @@ static const MemoryRegionOps machine_id_ops = {
     .valid.max_access_size = 4,
 };
 
-static void q800_init(MachineState *machine)
+static MemTxResult macio_alias_read(void *opaque, hwaddr addr, uint64_t *data,
+                                    unsigned size, MemTxAttrs attrs)
 {
+    Q800MachineState *m = Q800_MACHINE(opaque);
+    MemoryRegionSection mrs;
+
+    addr &= IO_SLICE_MASK;
+    mrs = memory_region_find(&m->mac_io, addr, size);
+
+    return memory_region_dispatch_read(mrs.mr, mrs.offset_within_region,
+                                       data, size_memop(size) | MO_BE, attrs);
+}
+
+static MemTxResult macio_alias_write(void *opaque, hwaddr addr, uint64_t value,
+                                     unsigned size, MemTxAttrs attrs)
+{
+    Q800MachineState *m = Q800_MACHINE(opaque);
+    MemoryRegionSection mrs;
+
+    addr &= IO_SLICE_MASK;
+    mrs = memory_region_find(&m->mac_io, addr, size);
+
+    memory_region_dispatch_write(mrs.mr, mrs.offset_within_region,
+                                 value, size_memop(size) | MO_BE, attrs);
+    return MEMTX_OK;
+}
+
+static const MemoryRegionOps macio_alias_ops = {
+    .read_with_attrs = macio_alias_read,
+    .write_with_attrs = macio_alias_write,
+    .valid.min_access_size = 1,
+    .valid.max_access_size = 4,
+};
+
+static void q800_machine_init(MachineState *machine)
+{
+    Q800MachineState *m = Q800_MACHINE(machine);
     M68kCPU *cpu = NULL;
     int linux_boot;
     int32_t kernel_size;
@@ -138,10 +184,8 @@ static void q800_init(MachineState *machine)
     int32_t initrd_size;
     MemoryRegion *rom = NULL;
     MemoryRegion *ram;
-    MemoryRegion *io;
+    MemoryRegion *mac_io_alias;
     MemoryRegion *machine_id;
-    const int io_slice_nb = (IO_SIZE / IO_SLICE) - 1;
-    int i;
     ram_addr_t ram_size = machine->ram_size;
     const char *kernel_filename = machine->kernel_filename;
     const char *initrd_filename = machine->initrd_filename;
@@ -202,20 +246,16 @@ static void q800_init(MachineState *machine)
         }
     }
 
+    memory_region_init(&m->mac_io, NULL, "mac-io", IO_SLICE);
+    memory_region_add_subregion(get_system_memory(), IO_BASE, &m->mac_io);
+
     /*
      * Memory from IO_BASE to IO_BASE + IO_SLICE is repeated
      * from IO_BASE + IO_SLICE to IO_BASE + IO_SIZE
      */
-    io = g_new(MemoryRegion, io_slice_nb);
-    for (i = 0; i < io_slice_nb; i++) {
-        char *name = g_strdup_printf("mac_m68k.io[%d]", i + 1);
-
-        memory_region_init_alias(&io[i], NULL, name, get_system_memory(),
-                                 IO_BASE, IO_SLICE);
-        memory_region_add_subregion(get_system_memory(),
-                                    IO_BASE + (i + 1) * IO_SLICE, &io[i]);
-        g_free(name);
-    }
+    mac_io_alias = g_new(MemoryRegion, 1);
+    memory_region_init_io(mac_io_alias, NULL, &macio_alias_ops, m, "mac-io.alias", IO_SIZE);
+    memory_region_add_subregion(get_system_memory(), IO_BASE + IO_SLICE, mac_io_alias);
 
     machine_id = g_malloc(sizeof(*machine_id));
     memory_region_init_io(machine_id, NULL, &machine_id_ops, NULL, "Machine ID", 4);
@@ -227,13 +267,15 @@ static void q800_init(MachineState *machine)
     object_property_set_link(OBJECT(djmemc_dev), OBJECT(cpu), "cpu",
                              &error_abort);
     qdev_init_nofail(djmemc_dev);
-    sysbus_mmio_map(SYS_BUS_DEVICE(djmemc_dev), 0, DJMEMC_BASE);
+    memory_region_add_subregion(&m->mac_io, DJMEMC_BASE - IO_BASE,
+                                sysbus_mmio_get_region(SYS_BUS_DEVICE(djmemc_dev), 0));
 
     /* IOSB subsystem */
 
     dev = qdev_create(NULL, TYPE_IOSB);
     qdev_init_nofail(dev);
-    sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0, IOSB_BASE);
+    memory_region_add_subregion(&m->mac_io, IOSB_BASE - IO_BASE,
+                                sysbus_mmio_get_region(SYS_BUS_DEVICE(dev), 0));
 
     /* VIA */
 
@@ -242,7 +284,8 @@ static void q800_init(MachineState *machine)
                              &error_abort);
     qdev_init_nofail(via_dev);
     sysbus = SYS_BUS_DEVICE(via_dev);
-    sysbus_mmio_map(sysbus, 0, VIA_BASE);
+    memory_region_add_subregion(&m->mac_io, VIA_BASE - IO_BASE,
+                                sysbus_mmio_get_region(sysbus, 0));
     qdev_connect_gpio_out_named(DEVICE(sysbus), "irq", 0,
                                 qdev_get_gpio_in(djmemc_dev, 0));
     qdev_connect_gpio_out_named(DEVICE(sysbus),
@@ -284,8 +327,10 @@ static void q800_init(MachineState *machine)
                              "dma_mr", &error_abort);
     qdev_init_nofail(dev);
     sysbus = SYS_BUS_DEVICE(dev);
-    sysbus_mmio_map(sysbus, 0, SONIC_BASE);
-    sysbus_mmio_map(sysbus, 1, SONIC_PROM_BASE);
+    memory_region_add_subregion(&m->mac_io, SONIC_BASE - IO_BASE,
+                                sysbus_mmio_get_region(sysbus, 0));
+    memory_region_add_subregion(&m->mac_io, SONIC_PROM_BASE - IO_BASE,
+                                sysbus_mmio_get_region(sysbus, 1));
     sysbus_connect_irq(sysbus, 0, qdev_get_gpio_in(djmemc_dev, 2));
 
     /* SCC */
@@ -303,7 +348,8 @@ static void q800_init(MachineState *machine)
     sysbus = SYS_BUS_DEVICE(dev);
     sysbus_connect_irq(sysbus, 0, qdev_get_gpio_in(djmemc_dev, 3));
     sysbus_connect_irq(sysbus, 1, qdev_get_gpio_in(djmemc_dev, 3));
-    sysbus_mmio_map(sysbus, 0, SCC_BASE);
+    memory_region_add_subregion(&m->mac_io, SCC_BASE - IO_BASE,
+                                sysbus_mmio_get_region(sysbus, 0));
 
     /* SCSI */
 
@@ -324,8 +370,10 @@ static void q800_init(MachineState *machine)
     sysbus_connect_irq(sysbus, 1,
                        qdev_get_gpio_in_named(via_dev, "via2-irq",
                                               VIA2_IRQ_SCSI_DATA_BIT));
-    sysbus_mmio_map(sysbus, 0, ESP_BASE);
-    sysbus_mmio_map(sysbus, 1, ESP_PDMA);
+    memory_region_add_subregion(&m->mac_io, ESP_BASE - IO_BASE,
+                                sysbus_mmio_get_region(sysbus, 0));
+    memory_region_add_subregion(&m->mac_io, ESP_PDMA - IO_BASE,
+                                sysbus_mmio_get_region(sysbus, 1));
 
     scsi_bus_legacy_handle_cmdline(&esp->bus);
 
@@ -334,7 +382,8 @@ static void q800_init(MachineState *machine)
     dev = qdev_create(NULL, TYPE_ASC);
     qdev_prop_set_uint8(dev, "asctype", ASC_TYPE_ASC);
     qdev_init_nofail(dev);
-    sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0, ASC_BASE);
+    memory_region_add_subregion(&m->mac_io, ASC_BASE - IO_BASE,
+                                sysbus_mmio_get_region(SYS_BUS_DEVICE(dev), 0));   
     sysbus_connect_irq(SYS_BUS_DEVICE(dev), 0,
                        qdev_get_gpio_in_named(via_dev, "via2-irq",
                                               VIA2_IRQ_ASC_BIT));
@@ -343,7 +392,8 @@ static void q800_init(MachineState *machine)
 
     dev = qdev_create(NULL, TYPE_SWIM);
     qdev_init_nofail(dev);
-    sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0, SWIM_BASE);
+    memory_region_add_subregion(&m->mac_io, SWIM_BASE - IO_BASE,
+                                sysbus_mmio_get_region(SYS_BUS_DEVICE(dev), 0));
 
     /* NuBus */
 
@@ -423,7 +473,7 @@ static void q800_machine_class_init(ObjectClass *oc, void *data)
 {
     MachineClass *mc = MACHINE_CLASS(oc);
     mc->desc = "Macintosh Quadra 800";
-    mc->init = q800_init;
+    mc->init = q800_machine_init;
     mc->default_cpu_type = M68K_CPU_TYPE_NAME("m68040");
     mc->max_cpus = 1;
     mc->is_default = 0;
@@ -433,6 +483,7 @@ static void q800_machine_class_init(ObjectClass *oc, void *data)
 static const TypeInfo q800_machine_typeinfo = {
     .name       = MACHINE_TYPE_NAME("q800"),
     .parent     = TYPE_MACHINE,
+    .instance_size = sizeof(Q800MachineState),
     .class_init = q800_machine_class_init,
 };
 

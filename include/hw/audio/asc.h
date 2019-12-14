@@ -28,6 +28,7 @@ typedef struct ASCState {
     SysBusDevice parent_obj;
 
     MemoryRegion asc;
+    MemoryRegion mem_fifo;
     MemoryRegion mem_regs;
     QEMUSoundCard card;
     SWVoiceOut *channel;

@@ -75,7 +75,7 @@
  */
 
 #define ASC_LENGTH   0x2000
-#define ASC_BUF_SIZE 0x0800
+#define ASC_FIFO_SIZE 0x0800
 
 #define ASC_REG_BASE 0x0800
 enum {
@@ -236,21 +236,63 @@ static void asc_out_cb(void *opaque, int free_b)
     }
 }
 
+static uint64_t asc_fifo_read(void *opaque, hwaddr addr,
+                              unsigned size)
+{
+    ASCState *s = opaque;
+
+    trace_asc_read_fifo(addr, size, s->fifo[addr]);
+    return s->fifo[addr];
+}
+
+static void asc_fifo_write(void *opaque, hwaddr addr, uint64_t value,
+                           unsigned size)
+{
+    ASCState *s = opaque;
+
+    trace_asc_write_fifo(addr, size, value);
+    if (s->regs[ASC_MODE] == 1) {
+        if (addr < 0x400) {
+            /* FIFO A */
+            s->fifo[s->a_wptr++] = value;
+            s->a_cnt++;
+            if (s->a_cnt == 0x3ff) {
+                s->regs[ASC_FIFOIRQ] |= 2; /* FIFO A Full */
+            }
+            s->a_wptr &= 0x3ff;
+        } else {
+            /* FIFO B */
+            s->fifo[s->b_wptr++ + 0x400] = value;
+            s->b_cnt++;
+            if (s->b_cnt == 0x3ff) {
+                s->regs[ASC_FIFOIRQ] |= 8; /* FIFO B Full */
+            }
+            s->b_wptr &= 0x3ff;
+        }
+    } else {
+        s->fifo[addr] = value;
+    }
+    return;    
+}
+
+static const MemoryRegionOps asc_fifo_ops = {
+    .read = asc_fifo_read,
+    .write = asc_fifo_write,
+    .impl = {
+        .min_access_size = 1,
+        .max_access_size = 1,
+    },
+    .endianness = DEVICE_BIG_ENDIAN,
+};
+
 static uint64_t asc_read(void *opaque, hwaddr addr,
                          unsigned size)
 {
     ASCState *s = opaque;
     uint64_t prev, value;
 
-    if (addr < 0x800) {
-        trace_asc_read_fifo(addr, size, s->fifo[addr]);
-        return s->fifo[addr];
-    }
-
-    addr -= 0x800;
-
     if (addr >= 0x030) {
-        trace_asc_read_unknown(addr + 0x800, size, 0);
+        trace_asc_read_unknown(addr, size, 0);
         return 0;
     }
 
@@ -316,7 +358,7 @@ static uint64_t asc_read(void *opaque, hwaddr addr,
         break;
     }
 
-    trace_asc_read_reg(addr + 0x800, size, value);
+    trace_asc_read_reg(addr, size, value);
     return value;
 }
 
@@ -325,35 +367,8 @@ static void asc_write(void *opaque, hwaddr addr, uint64_t value,
 {
     ASCState *s = opaque;
 
-    if (addr < 0x800) {
-        trace_asc_write_fifo(addr, size, value);
-        if (s->regs[ASC_MODE] == 1) {
-            if (addr < 0x400) {
-                /* FIFO A */
-                s->fifo[s->a_wptr++] = value;
-                s->a_cnt++;
-                if (s->a_cnt == 0x3ff) {
-                    s->regs[ASC_FIFOIRQ] |= 2; /* FIFO A Full */
-                }
-                s->a_wptr &= 0x3ff;
-            } else {
-                /* FIFO B */
-                s->fifo[s->b_wptr++ + 0x400] = value;
-                s->b_cnt++;
-                if (s->b_cnt == 0x3ff) {
-                    s->regs[ASC_FIFOIRQ] |= 8; /* FIFO B Full */
-                }
-                s->b_wptr &= 0x3ff;
-            }
-        } else {
-            s->fifo[addr] = value;
-        }
-        return;
-    }
-
-    addr -= 0x800;
     if (addr >= 0x30) {
-        trace_asc_write_unknown(addr + 0x800, size, value);
+        trace_asc_write_unknown(addr, size, value);
         return;
     }
     switch (addr) {
@@ -386,7 +401,7 @@ static void asc_write(void *opaque, hwaddr addr, uint64_t value,
     case ASC_WAVECTRL:
         break;
     }
-    trace_asc_write_reg(addr + 0x800, size, value);
+    trace_asc_write_reg(addr, size, value);
     s->regs[addr] = value;
 }
 
@@ -434,7 +449,6 @@ static void asc_reset(DeviceState *d)
 static void asc_realize(DeviceState *dev, Error **errp)
 {
     ASCState *s = ASC(dev);
-    SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
     struct audsettings as;
 
     AUD_register_card("Apple Sound Chip", &s->card);
@@ -447,12 +461,21 @@ static void asc_realize(DeviceState *dev, Error **errp)
     s->channel = AUD_open_out(&s->card, s->channel, "asc.out",
                               s, asc_out_cb, &as);
 
-    s->fifo = g_malloc0(ASC_BUF_SIZE);
+    s->fifo = g_malloc0(ASC_FIFO_SIZE);
+}
 
-    memory_region_init(&s->asc, OBJECT(dev), "asc", ASC_LENGTH);
-    memory_region_init_io(&s->mem_regs, OBJECT(dev), &asc_mmio_ops, s, "asc.regs",
-                          ASC_LENGTH);
-    memory_region_add_subregion(&s->asc, 0x0, &s->mem_regs);
+static void asc_init(Object *obj)
+{
+    ASCState *s = ASC(obj);
+    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
+
+    memory_region_init(&s->asc, OBJECT(obj), "asc", ASC_LENGTH);
+    memory_region_init_io(&s->mem_fifo, OBJECT(obj), &asc_fifo_ops, s, "asc.fifo",
+                          ASC_FIFO_SIZE);
+    memory_region_add_subregion(&s->asc, 0, &s->mem_fifo);
+    memory_region_init_io(&s->mem_regs, OBJECT(obj), &asc_mmio_ops, s, "asc.regs",
+                          ASC_LENGTH - ASC_FIFO_SIZE);
+    memory_region_add_subregion(&s->asc, ASC_FIFO_SIZE, &s->mem_regs);
 
     sysbus_init_irq(sbd, &s->irq);
     sysbus_init_mmio(sbd, &s->asc);
@@ -479,6 +502,7 @@ static TypeInfo asc_info = {
     .name = TYPE_ASC,
     .parent = TYPE_SYS_BUS_DEVICE,
     .instance_size = sizeof(ASCState),
+    .instance_init = asc_init,
     .class_init = asc_class_init,
 };
 
