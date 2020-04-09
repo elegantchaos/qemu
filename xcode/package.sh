@@ -16,7 +16,7 @@ pushd "$PACKAGE_DIR"
 
 ditto "$INSTALL_DIR/bin"/* .
 ditto "$BUILD_DIR/ppc-softmmu/qemu-system-ppc" .
-
+ditto "$INSTALL_DIR/share/qemu" ./pcbios
 rm -rf "libs"
 mkdir -p "libs"
 
