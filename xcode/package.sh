@@ -14,7 +14,27 @@ fi
 mkdir -p "$PACKAGE_DIR"
 pushd "$PACKAGE_DIR"
 
+ditto "$INSTALL_DIR/bin"/* .
 ditto "$BUILD_DIR/ppc-softmmu/qemu-system-ppc" .
+
+rm -rf "libs"
+mkdir -p "libs"
+
+func fix_libs() {
+  local TARGET=$1
+  local LIBS=$2
+
+  for LIB in ${LIBS[@]}
+  do
+    local NAME=$(basename "$LIB")
+    echo "Packaging library $NAME"
+    cp -f "$LIB.dylib" "libs/"
+    install_name_tool -change "$LIB.dylib" "@executable_path/libs/$NAME.dylib" qemu-system-ppc
+  done
+
+  chmod a+w libs/*
+}
+
 
 LIBS=( \
   "/usr/local/opt/glib/lib/libgio-2.0.0" \
@@ -22,10 +42,16 @@ LIBS=( \
   "/usr/local/opt/glib/lib/libglib-2.0.0" \
   "/usr/local/opt/libusb/lib/libusb-1.0.0" \
   "/usr/local/opt/vde/lib/libvdeplug.3" \
+  "/usr/local/opt/libssh/lib/libssh.4" \
+  "/usr/local/opt/pixman/lib/libpixman-1.0" \
+  "/usr/local/opt/libpng/lib/libpng16.16" \
+  "/usr/local/opt/jpeg/lib/libjpeg.9" \
+  "/usr/local/opt/lzo/lib/liblzo2.2" \
+  "/usr/local/opt/glib/lib/libgthread-2.0.0" \
+  "/usr/local/opt/nettle/lib/libnettle.6" \
+  "/usr/local/opt/gnutls/lib/libgnutls.30" \
   )
-  
-rm -rf "libs"
-mkdir -p "libs"
+
 for LIB in ${LIBS[@]}
 do
   NAME=$(basename "$LIB")
@@ -33,6 +59,24 @@ do
   cp -f "$LIB.dylib" "libs/"
   install_name_tool -change "$LIB.dylib" "@executable_path/libs/$NAME.dylib" qemu-system-ppc
 done
+
+# #fix dependencies of libgthread-2.0.0.dylib
+chmod a+w libs/*
+
+LIBS=( \
+  "/usr/local/Cellar/glib/2.64.1_1/lib/libglib-2.0.0" \
+  "/usr/local/opt/gettext/lib/libintl.8" \
+  )
+
+for LIB in ${LIBS[@]}
+do
+  NAME=$(basename "$LIB")
+  echo "Packaging library $NAME"
+  cp -f "$LIB.dylib" "libs/"
+  install_name_tool -change "$LIB.dylib" "@executable_path/libs/$NAME.dylib" libs/libgthread-2.0.0.dylib
+done
+
+chmod a-w libs/*
 
 open "$PACKAGE_DIR"
 
