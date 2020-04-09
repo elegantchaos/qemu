@@ -52,29 +52,14 @@ LIBS=( \
   "/usr/local/opt/gnutls/lib/libgnutls.30" \
   )
 
-for LIB in ${LIBS[@]}
-do
-  NAME=$(basename "$LIB")
-  echo "Packaging library $NAME"
-  cp -f "$LIB.dylib" "libs/"
-  install_name_tool -change "$LIB.dylib" "@executable_path/libs/$NAME.dylib" qemu-system-ppc
-done
-
-# #fix dependencies of libgthread-2.0.0.dylib
-chmod a+w libs/*
+fix_libs "qemu-system-ppc" $LIBS
 
 LIBS=( \
   "/usr/local/Cellar/glib/2.64.1_1/lib/libglib-2.0.0" \
   "/usr/local/opt/gettext/lib/libintl.8" \
   )
 
-for LIB in ${LIBS[@]}
-do
-  NAME=$(basename "$LIB")
-  echo "Packaging library $NAME"
-  cp -f "$LIB.dylib" "libs/"
-  install_name_tool -change "$LIB.dylib" "@executable_path/libs/$NAME.dylib" libs/libgthread-2.0.0.dylib
-done
+fix_libs "libs/libgthread-2.0.0.dylib" $LIBS
 
 chmod a-w libs/*
 
