@@ -16,7 +16,14 @@ pushd "$PACKAGE_DIR"
 
 ditto "$BUILD_DIR/ppc-softmmu/qemu-system-ppc" .
 
-LIBS=( "/usr/local/opt/glib/lib/libgio-2.0.0" "/usr/local/opt/glib/lib/libgobject-2.0.0" "/usr/local/opt/glib/lib/libglib-2.0.0" "/usr/local/opt/libusb/lib/libusb-1.0.0" )
+LIBS=( \
+  "/usr/local/opt/glib/lib/libgio-2.0.0" \
+  "/usr/local/opt/glib/lib/libgobject-2.0.0" \
+  "/usr/local/opt/glib/lib/libglib-2.0.0" \
+  "/usr/local/opt/libusb/lib/libusb-1.0.0" \
+  "/usr/local/opt/vde/lib/libvdeplug.3" \
+  )
+  
 rm -rf "libs"
 mkdir -p "libs"
 for LIB in ${LIBS[@]}
