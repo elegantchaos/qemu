@@ -167,3 +167,4 @@ trace-ust-all.c
 .DS_Store
 xcuserdata/
 roms/vgabios/config.mak
+.build/
