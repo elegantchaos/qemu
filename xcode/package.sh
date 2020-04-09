@@ -23,13 +23,18 @@ mkdir -p "libs"
 function fix_libs() {
   local TARGET=$1
   shift
+  echo "Fixing references in $TARGET."
 
   while (( "$#" ))
   do
     local LIB="$1"
     local NAME=$(basename "$LIB")
-    echo "Packaging library $NAME for $TARGET"
-    cp -f "$LIB.dylib" "libs/"
+    if [[ ! -e "libs/$NAME.dylib" ]]
+    then
+      echo "Copying library $NAME."
+      cp -f "$LIB.dylib" "libs/"
+    fi
+
     install_name_tool -change "$LIB.dylib" "@executable_path/libs/$NAME.dylib" $TARGET
     shift
   done
@@ -61,6 +66,16 @@ GLIB_LIBS=( \
   "/usr/local/Cellar/glib/2.64.1_1/lib/libgobject-2.0.0" \
   "/usr/local/Cellar/glib/2.64.1_1/lib/libgmodule-2.0.0" \
   "/usr/local/opt/pcre/lib/libpcre.1" \
+  "/usr/local/opt/libffi/lib/libffi.6" \
+  "/usr/local/opt/openssl@1.1/lib/libcrypto.1.1" \
+  "/usr/local/opt/p11-kit/lib/libp11-kit.0" \
+  "/usr/local/opt/libidn2/lib/libidn2.0" \
+  "/usr/local/opt/libunistring/lib/libunistring.2" \
+  "/usr/local/opt/libtasn1/lib/libtasn1.6" \
+  "/usr/local/opt/nettle/lib/libnettle.6" \
+  "/usr/local/opt/nettle/lib/libhogweed.4" \
+  "/usr/local/opt/gmp/lib/libgmp.10" \
+  "/usr/local/Cellar/nettle/3.4.1/lib/libnettle.6" \
   )
 
 fix_libs "qemu-system-ppc" "${APP_LIBS[@]}"
@@ -68,6 +83,16 @@ fix_libs "libs/libgthread-2.0.0.dylib" "${GLIB_LIBS[@]}"
 fix_libs "libs/libgio-2.0.0.dylib" "${GLIB_LIBS[@]}"
 fix_libs "libs/libglib-2.0.0.dylib" "${GLIB_LIBS[@]}"
 fix_libs "libs/libgobject-2.0.0.dylib" "${GLIB_LIBS[@]}"
+fix_libs "libs/libgmodule-2.0.0.dylib" "${GLIB_LIBS[@]}"
+fix_libs "libs/libssh.4.dylib" "${GLIB_LIBS[@]}"
+fix_libs "libs/libgnutls.30.dylib" "${GLIB_LIBS[@]}"
+fix_libs "libs/libp11-kit.0.dylib" "${GLIB_LIBS[@]}"
+fix_libs "libs/libidn2.0.dylib" "${GLIB_LIBS[@]}"
+fix_libs "libs/libhogweed.4.dylib" "${GLIB_LIBS[@]}"
+
+
+
+
 
 chmod a-w libs/*
 
