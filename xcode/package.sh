@@ -1,9 +1,9 @@
 #!/bin/bash
 
 WORKING_DIR=$(pwd -P)
-BUILD_DIR="$WORKING_DIR/qemu-built/build"
-INSTALL_DIR="$WORKING_DIR/qemu-built/installed"
-PACKAGE_DIR="$WORKING_DIR/qemu-built/package"
+BUILD_DIR="$WORKING_DIR/.build/obj"
+INSTALL_DIR="$WORKING_DIR/.build/installed"
+PACKAGE_DIR="$WORKING_DIR/.build/package"
 ROOT_DIR=$(dirname $0)
 
 if [[ ! -e "$INSTALL_DIR" ]]
@@ -14,12 +14,16 @@ fi
 mkdir -p "$PACKAGE_DIR"
 pushd "$PACKAGE_DIR"
 
+echo "Copying binaries."
 ditto "$INSTALL_DIR/bin"/* .
 ditto "$BUILD_DIR/ppc-softmmu/qemu-system-ppc" .
-ditto "$INSTALL_DIR/share/qemu" ./pcbios
+
+echo "Copying bios."
+ditto "$INSTALL_DIR/share/qemu" ./pc-bios
+
+echo "Copying libraries."
 rm -rf "libs"
 mkdir -p "libs"
-
 function fix_libs() {
   local TARGET=$1
   shift
@@ -91,12 +95,13 @@ fix_libs "libs/libidn2.0.dylib" "${GLIB_LIBS[@]}"
 fix_libs "libs/libhogweed.4.dylib" "${GLIB_LIBS[@]}"
 
 
-
-
-
 chmod a-w libs/*
 
-open "$PACKAGE_DIR"
+echo "Zipping..."
+ditto -c "$PACKAGE_DIR" "$WORKING_DIR/qemu.zip"
+
+echo "Done."
+open "$WORKING_DIR"
 
 #
 # #fix dependencies of qemu-system-ppc

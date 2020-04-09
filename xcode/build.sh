@@ -1,7 +1,7 @@
 #!/bin/sh
 
-BUILD_DIR="$PWD/qemu-built/build"
-INSTALL_DIR="$PWD/qemu-built/installed"
+BUILD_DIR="$PWD/.build/obj"
+INSTALL_DIR="$PWD/.build/installed"
 ROOT_DIR=$(dirname $0)
 
 if [[ ! -e "$BUILD_DIR" ]]
