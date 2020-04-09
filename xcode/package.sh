@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 WORKING_DIR=$(pwd -P)
 BUILD_DIR="$WORKING_DIR/qemu-built/build"
@@ -20,23 +20,25 @@ ditto "$BUILD_DIR/ppc-softmmu/qemu-system-ppc" .
 rm -rf "libs"
 mkdir -p "libs"
 
-func fix_libs() {
+function fix_libs() {
   local TARGET=$1
-  local LIBS=$2
+  shift
 
-  for LIB in ${LIBS[@]}
+  while (( "$#" ))
   do
+    local LIB="$1"
     local NAME=$(basename "$LIB")
-    echo "Packaging library $NAME"
+    echo "Packaging library $NAME for $TARGET"
     cp -f "$LIB.dylib" "libs/"
-    install_name_tool -change "$LIB.dylib" "@executable_path/libs/$NAME.dylib" qemu-system-ppc
+    install_name_tool -change "$LIB.dylib" "@executable_path/libs/$NAME.dylib" $TARGET
+    shift
   done
 
   chmod a+w libs/*
 }
 
 
-LIBS=( \
+APP_LIBS=( \
   "/usr/local/opt/glib/lib/libgio-2.0.0" \
   "/usr/local/opt/glib/lib/libgobject-2.0.0" \
   "/usr/local/opt/glib/lib/libglib-2.0.0" \
@@ -52,14 +54,20 @@ LIBS=( \
   "/usr/local/opt/gnutls/lib/libgnutls.30" \
   )
 
-fix_libs "qemu-system-ppc" $LIBS
 
-LIBS=( \
+GLIB_LIBS=( \
   "/usr/local/Cellar/glib/2.64.1_1/lib/libglib-2.0.0" \
   "/usr/local/opt/gettext/lib/libintl.8" \
+  "/usr/local/Cellar/glib/2.64.1_1/lib/libgobject-2.0.0" \
+  "/usr/local/Cellar/glib/2.64.1_1/lib/libgmodule-2.0.0" \
+  "/usr/local/opt/pcre/lib/libpcre.1" \
   )
 
-fix_libs "libs/libgthread-2.0.0.dylib" $LIBS
+fix_libs "qemu-system-ppc" "${APP_LIBS[@]}"
+fix_libs "libs/libgthread-2.0.0.dylib" "${GLIB_LIBS[@]}"
+fix_libs "libs/libgio-2.0.0.dylib" "${GLIB_LIBS[@]}"
+fix_libs "libs/libglib-2.0.0.dylib" "${GLIB_LIBS[@]}"
+fix_libs "libs/libgobject-2.0.0.dylib" "${GLIB_LIBS[@]}"
 
 chmod a-w libs/*
 
