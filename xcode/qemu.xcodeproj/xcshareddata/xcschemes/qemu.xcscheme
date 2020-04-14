@@ -1,28 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
    LastUpgradeVersion = "1140"
-   version = "1.7">
+   version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES">
-      <PreActions>
-         <ExecutionAction
-            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
-            <ActionContent
-               title = "Configure"
-               scriptText = "&#10;if [[ ! -e &quot;config-host.mak&quot; ]]&#10;then&#10;    ./configure --target-list=&quot;ppc-softmmu&quot; --audio-drv-list=&quot;coreaudio&quot; --enable-libusb --enable-kvm --enable-hvf --enable-cocoa&#10;fi&#10;">
-               <EnvironmentBuildable>
-                  <BuildableReference
-                     BuildableIdentifier = "primary"
-                     BlueprintIdentifier = "22978E97243DDBEA0019AB35"
-                     BuildableName = "qemu"
-                     BlueprintName = "qemu"
-                     ReferencedContainer = "container:qemu.xcodeproj">
-                  </BuildableReference>
-               </EnvironmentBuildable>
-            </ActionContent>
-         </ExecutionAction>
-      </PreActions>
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"

@@ -22682,12 +22682,12 @@
 			buildConfigurationList = 22978E9A243DDBEA0019AB35 /* Build configuration list for PBXLegacyTarget "qemu" */;
 			buildPhases = (
 			);
-			buildToolPath = /usr/bin/make;
-			buildWorkingDirectory = "/Volumes/caconym/Users/sam/Projects/qemu-screamer";
+			buildToolPath = build.sh;
+			buildWorkingDirectory = "$(SRC_ROOT)";
 			dependencies = (
 			);
 			name = qemu;
-			passBuildSettingsInEnvironment = 1;
+			passBuildSettingsInEnvironment = 0;
 			productName = qemu;
 		};
 /* End PBXLegacyTarget section */
