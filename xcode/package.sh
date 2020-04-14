@@ -11,6 +11,7 @@ then
   source "$ROOT_DIR/build.sh"
 fi
 
+rm -rf "$PACKAGE_DIR"
 mkdir -p "$PACKAGE_DIR"
 pushd "$PACKAGE_DIR"
 
