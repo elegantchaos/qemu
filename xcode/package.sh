@@ -20,7 +20,8 @@ ditto "$INSTALL_DIR/bin"/* .
 ditto "$BUILD_DIR/ppc-softmmu/qemu-system-ppc" .
 
 echo "Copying bios."
-ditto "$INSTALL_DIR/share/qemu" ./pc-bios
+ditto "$INSTALL_DIR/share/qemu/openbios-ppc" ./pc-bios/
+ditto "$INSTALL_DIR/share/qemu/vgabios-stdvga.bin" ./pc-bios/
 
 echo "Copying libraries."
 rm -rf "libs"
